@@ -1,0 +1,19 @@
+planner_fre: 150
+
+max_vel_hor: 1.0
+
+max_vel_ver: 1.0
+
+max_omega: 0.26
+
+target_pos_inflation: 0.2
+
+target_yaw_inflation: 0.1
+
+route_list_x: [0.0, 2.0, 2.0]
+
+route_list_y: [0.0, 0.0, 2.0]
+
+route_list_z: [4.0, 4.0, 4.0]
+
+route_list_yaw: [0.0, 0.26, -1.0]

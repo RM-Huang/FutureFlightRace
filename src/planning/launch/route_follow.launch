@@ -1,0 +1,12 @@
+<launch>
+
+	<node pkg="planning" type="planning" name="planning" output="screen">
+			
+		<remap from="~odom" to="/mavros/local_position/odom" />
+
+		<remap from="~cmd" to="/cmd" />
+
+        <rosparam command="load" file="$(find planning)/config/planning_param.yaml" />
+	</node>
+ 
+</launch>
