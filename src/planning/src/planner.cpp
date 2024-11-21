@@ -21,6 +21,8 @@ namespace planning{
                 ROS_ERROR("[planner]:Route list have invalid num in dimensions!");
                 ros::Duration(1.0).sleep();
             }
+        }else{
+            std::cout << "route_list_size = " << route_list[0].size() << std::endl;
         }
 
         plan_state = STANDBY;
@@ -86,7 +88,8 @@ namespace planning{
 
         if(pos_err.norm() < target_pos_inflation && std::abs(yaw_err) < target_yaw_inflation){
             current_route += 1;
-            if(current_route >= route_list.size() - 1){
+            std::cout << "current_route = " << current_route << std::endl;
+            if(current_route >= route_list[0].size()){
                 return false;
             }
 
