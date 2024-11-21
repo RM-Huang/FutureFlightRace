@@ -1,6 +1,6 @@
 # Introduction
 ## Simulation Step
-Run the following script in ${PROJECT_FILE}$/sh_utils to start simulation:
+Run the following script in {PROJECT_FILE}/sh_utils to start simulation:
 ```
 ./sim_traj_follow.sh
 ```
