@@ -38,6 +38,10 @@ namespace planning{
         
         ros::Publisher cmd_pub;
 
+        ros::Publisher aruco_id_pub;//发布二维码ID
+
+        ros::Publisher aruco_img_pub;//发布二维码图像
+
         Planner(const ros::NodeHandle &nh);
 
         void odom_callback(const nav_msgs::OdometryConstPtr &msg);
@@ -54,7 +58,24 @@ namespace planning{
 
         bool landing_process();
 
+        Eigen::Vector3d calculate_position_error(const Eigen::Vector3d& current_position, const Eigen::Vector3d& target_position);
+
+        bool detect_aruco_marker();//通过摄像头检测是否存在ArUco标识码
+
+        bool get_aruco_position(Eigen::Vector3d& position);//将标识码的像素坐标转换为相对于无人机的三维坐标
+
         void main_loop();
+
+        void detect_aruco();
+
+        bool detect_and_get_aruco(Eigen::Vector3d& marker_position);
+        
+        bool detect_and_get_aruco(cv::Mat& image, std::vector<int>& ids, std::vector<std::vector<cv::Point2f>>& corners);
+
+
+        cv::Mat get_camera_frame();
+
+        std::string save_path_ = "/tmp/aruco_data/";
     };
 }
 
