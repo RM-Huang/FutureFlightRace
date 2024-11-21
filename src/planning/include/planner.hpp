@@ -48,6 +48,8 @@ namespace planning{
 
         void get_err(const int current_route, const Eigen::Vector4d& current_odom, Eigen::Vector3d& pos_err, double& yaw_err);
 
+        void publish_cmd(const Eigen::Vector4d& current_odom, const Eigen::Vector3d& pos_err, const double& yaw_err);
+
         bool route_follow_process();
 
         bool landing_process();

@@ -53,6 +53,21 @@ namespace planning{
         yaw_err = err[3];
     }
 
+    void Planner::publish_cmd(const Eigen::Vector4d& current_odom, const Eigen::Vector3d& pos_err, const double& yaw_err){
+        double local_planning_dur = get_min_duration(pos_err, yaw_err);
+
+        quadrotor_msgs::PositionCommand cmd_msg;
+
+        cmd_msg.header.stamp = ros::Time::now();
+        cmd_msg.position.x = current_odom(0) + pos_err(0) / local_planning_dur;
+        cmd_msg.position.y = current_odom(1) + pos_err(1) / local_planning_dur;
+        cmd_msg.position.z = current_odom(2) + pos_err(2) / local_planning_dur;
+
+        cmd_msg.yaw = current_odom(3) + yaw_err / local_planning_dur;
+
+        cmd_pub.publish(cmd_msg);
+    }
+
     bool Planner::route_follow_process(){
         
         Eigen::Quaterniond ori;
@@ -83,18 +98,7 @@ namespace planning{
         }
 
         // local planning
-        double local_planning_dur = get_min_duration(pos_err, yaw_err);
-
-        quadrotor_msgs::PositionCommand cmd_msg;
-
-        cmd_msg.header.stamp = ros::Time::now();
-        cmd_msg.position.x = current_odom(0) + pos_err(0) / local_planning_dur;
-        cmd_msg.position.y = current_odom(1) + pos_err(1) / local_planning_dur;
-        cmd_msg.position.z = current_odom(2) + pos_err(2) / local_planning_dur;
-
-        cmd_msg.yaw = current_odom(3) + yaw_err / local_planning_dur;
-
-        cmd_pub.publish(cmd_msg);
+        publish_cmd(current_odom, pos_err, yaw_err);
 
         return true;
     }
@@ -116,7 +120,7 @@ namespace planning{
             
             case FOLLOW:
                 if(!route_follow_process()){
-                    plan_state = STANDBY;
+                    plan_state = STANDBY; // change to LAND mode
                     ctrl_ready_trigger = false;
                     ROS_INFO("\033[32m[planner]: Route following mission completed!\033[32m");
                 }
