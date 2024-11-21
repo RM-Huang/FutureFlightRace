@@ -1,4 +1,10 @@
 #include "planner.hpp"
+#include <fstream> // For saving ID to a text file
+#include <sys/stat.h> // For creating directories
+#include <unistd.h>   // For access
+#include <iomanip>
+#include <ctime>
+#include <sstream>
 
 namespace planning{
     Planner::Planner(const ros::NodeHandle &nh){
@@ -14,6 +20,11 @@ namespace planning{
         nh.getParam("max_omega", MAX_OMEGA);
         nh.getParam("target_pos_inflation", target_pos_inflation);
         nh.getParam("target_yaw_inflation", target_yaw_inflation);
+        nh.getParam("aruco_save_path", save_path_);//在launch文件中设置保存路径
+
+
+        aruco_id_pub = nh.advertise<std_msgs::Int32>("aruco_id",10);//初始化发布二维码id
+        aruco_img_pub = nh.advertise<sensor_msgs::Image>("aruco_image",10);//初始化发布二维码图像
 
         // check validation of route_list
         if((route_list[0].size() ^ route_list[1].size() ^ route_list[2].size() ^ route_list[3].size())){
@@ -107,8 +118,159 @@ namespace planning{
     }
 
     bool Planner::landing_process(){
+        // Step 1: Detect ArUco marker
+    Eigen::Vector3d marker_position;
+    if (!detect_and_get_aruco(marker_position)) {
+        ROS_WARN("[planner]: ArUco marker not detected. Hovering.");
+        ros::Duration(0.5).sleep(); // Wait for the marker to reappear
+        return false;
+    }
+
+    // Step 2: Calculate position error
+    Eigen::Vector3d current_position(odom_msg.pose.pose.position.x,
+                                     odom_msg.pose.pose.position.y,
+                                     odom_msg.pose.pose.position.z);
+    Eigen::Vector3d position_error = calculate_position_error(current_position, marker_position);
+
+    // Step 3: Check if the UAV is close enough to land
+    if (position_error.norm() < target_pos_inflation) {
+        if (odom_msg.pose.pose.position.z <= 0.1) { // Already landed
+            ROS_INFO("\033[32m[planner]: Landing completed.\033[32m");
+            return true; // Landing finished
+        } else {
+            // Step 4: Descend gradually
+            Eigen::Vector3d descent_position = marker_position;
+            descent_position[2] = current_position[2] - 0.1; // Descend by 10 cm
+            publish_cmd(Eigen::Vector4d(descent_position[0], descent_position[1], descent_position[2], 0.0),
+                        position_error, 0.0);
+        }
+    } else {
+        // Step 5: Adjust horizontal position
+        Eigen::Vector3d adjusted_position = current_position + position_error;
+        publish_cmd(Eigen::Vector4d(adjusted_position[0], adjusted_position[1], current_position[2], 0.0),
+                    position_error, 0.0);
+    }
+
+    return false; // Landing still in progress
 
     }
+
+    Eigen::Vector3d Planner::calculate_position_error(const Eigen::Vector3d& current_position, const Eigen::Vector3d& target_position) {
+    return target_position - current_position;
+    }
+
+    void ensure_directory_exists(const std::string& directory) {
+    struct stat info;
+
+    // Check if the directory exists
+    if (stat(directory.c_str(), &info) != 0) {
+        // Directory does not exist, attempt to create it
+        if (mkdir(directory.c_str(), 0777) != 0) {
+            ROS_ERROR("[planner]: Failed to create directory: %s", directory.c_str());
+        } else {
+            ROS_INFO("[planner]: Directory created: %s", directory.c_str());
+        }
+    } else if (!(info.st_mode & S_IFDIR)) {
+        // Path exists but is not a directory
+        ROS_ERROR("[planner]: Path exists but is not a directory: %s", directory.c_str());
+    }
+}
+
+
+    void Planner::detect_aruco() {
+    std::vector<int> marker_ids;
+    std::vector<std::vector<cv::Point2f>> marker_corners;
+    cv::Mat aruco_image;
+
+    if (detect_and_get_aruco(aruco_image, marker_ids, marker_corners)) {
+        ROS_INFO("\033[32m[planner]: ArUco marker detected!\033[32m");
+
+        for (size_t i = 0; i < marker_ids.size(); ++i) {
+            int id = marker_ids[i];
+            ROS_INFO("[planner]: Detected ArUco ID: %d", id);
+
+            // Publish the ID
+            std_msgs::Int32 id_msg;
+            id_msg.data = id;
+            aruco_id_pub.publish(id_msg);
+
+            // Convert OpenCV image to ROS Image message
+            sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", aruco_image).toImageMsg();
+            aruco_img_pub.publish(img_msg);
+            ROS_INFO("[planner]: Published ArUco ID and image for marker %d.", id);
+
+            // Save the image and ID
+            save_aruco_data(id, aruco_image);
+        }
+        } else {
+        ROS_WARN("[planner]: No ArUco markers detected at this path point.");
+        }
+        }
+
+    void Planner::save_aruco_data(int id, const cv::Mat& image) {
+    // Ensure the directory exists
+    ensure_directory_exists(save_path_);
+
+    // Generate a unique timestamp
+    auto now = std::chrono::system_clock::now();
+    auto now_time = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream timestamp_stream;
+    timestamp_stream << std::put_time(std::localtime(&now_time), "%Y%m%d_%H%M%S");
+    std::string timestamp = timestamp_stream.str();
+
+    // Generate unique file names
+    std::string image_filename = save_path_ + "aruco_marker_" + std::to_string(id) + "_" + timestamp + ".png";
+    std::string log_filename = save_path_ + "aruco_log.txt";
+
+    // Save the image
+    if (!cv::imwrite(image_filename, image)) {
+        ROS_ERROR("[planner]: Failed to save image to %s", image_filename.c_str());
+        return;
+    }
+    ROS_INFO("[planner]: Saved ArUco image to %s", image_filename.c_str());
+
+    // Save the ID and timestamp to the log file
+    std::ofstream log_file(log_filename, std::ios::app);
+    if (log_file.is_open()) {
+        log_file << "ID: " << id << ", Timestamp: " << timestamp << "\n";
+        log_file.close();
+        ROS_INFO("[planner]: Saved ArUco ID %d to log file: %s", id, log_filename.c_str());
+    } else {
+        ROS_ERROR("[planner]: Failed to open log file for writing: %s", log_filename.c_str());
+    }
+}
+
+    bool Planner::detect_and_get_aruco(Eigen::Vector3d& marker_position) {
+    std::vector<int> ids;
+    std::vector<std::vector<cv::Point2f>> corners;
+    cv::Mat image;
+
+    if (!detect_and_get_aruco(image, ids, corners)) {
+        return false;
+    }
+
+    // Assume the first detected marker is the target
+    if (!ids.empty() && !corners.empty()) {
+        // Convert pixel coordinates to 3D coordinates (simplified for example)
+        marker_position = Eigen::Vector3d(corners[0][0].x, corners[0][0].y, 0.0);
+        return true;
+    }
+
+    return false;
+}
+
+cv::Mat Planner::get_camera_frame() {
+    cv::VideoCapture cap(0); // Open the default camera
+    if (!cap.isOpened()) {
+        ROS_ERROR("[planner]: Unable to open camera!");
+        return cv::Mat();
+    }
+
+    cv::Mat frame;
+    cap >> frame;
+    cap.release();
+    return frame;
+}
 
     void Planner::main_loop(){
         switch (plan_state)
@@ -123,16 +285,27 @@ namespace planning{
             
             case FOLLOW:
                 if(!route_follow_process()){
-                    plan_state = STANDBY; // change to LAND mode
+                    ros::Duration(0.5).sleep(); // Allow state transition stabilization
+                    plan_state = LAND; // change to LAND mode
                     ctrl_ready_trigger = false;
                     ROS_INFO("\033[32m[planner]: Route following mission completed!\033[32m");
+                }
+                else{
+
+                    detect_aruco();
+
                 }
                 break;
 
             case LAND:
+                if (landing_process()){
+                    ros::Duration(0.5).sleep(); // Stabilize after landing
+                    plan_state = STANDBY;
+                }
                 break;
-            
             default:
+                ROS_WARN("[planner]: Unknown state in main_loop: %d. Resetting to STANDBY.", plan_state);
+                    plan_state = STANDBY;
                 break;
         }
     }
