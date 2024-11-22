@@ -1,0 +1,12 @@
+<launch>
+    <node name="cam_down" pkg="usb_cam" type="usb_cam_node" output="screen">
+        <param name="video_device" value="/dev/video0"/>
+        <param name="image_width" value="800"/>
+        <param name="image_height" value="600"/>
+        <param name="framerate" value="20"/> 
+        <param name="pixel_format" value="mjpeg"/>
+    </node>
+    <node name="QrDetect" pkg="planning" type="QrDetect" output="screen">
+        
+    </node>
+</launch>

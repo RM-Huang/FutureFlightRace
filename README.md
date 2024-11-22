@@ -1,4 +1,9 @@
 # Introduction
+## Third parts
+```
+sudo apt-get install ros-noetic-usb-cam
+sudo apt-get install ros-noetic-cv-bridge
+```
 ## Simulation Step
 Run the following script in {PROJECT_FILE}/sh_utils to start simulation:
 ```
@@ -9,4 +14,5 @@ If you are using Software-in-the-Loop environment, run the following cmd to OFFB
 rosservice call /mavros/set_mode "base_mode: 0
 custom_mode: 'OFFBOARD'"
 ```
-run takeoff.sh to takeoff the vehicle while vehicle change to OFFBOARD mode successfully.
+run `takeoff.sh` to takeoff the vehicle while vehicle change to OFFBOARD mode successfully.
+
