@@ -6,6 +6,16 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <quadrotor_msgs/PositionCommand.h>
+#include <opencv2/opencv.hpp>
+#include <fstream> // For saving ID to a text file
+#include <sys/stat.h> // For creating directories
+#include <unistd.h>   // For access
+#include <iomanip>
+#include <ctime>
+#include <sstream>
+#include <std_msgs/Int32.h>
+#include <sensor_msgs/Image.h>
+#include <cv_bridge/cv_bridge.h>
 
 namespace planning{
 
@@ -72,6 +82,7 @@ namespace planning{
         
         bool detect_and_get_aruco(cv::Mat& image, std::vector<int>& ids, std::vector<std::vector<cv::Point2f>>& corners);
 
+        void save_aruco_data(int id, const cv::Mat& image);
 
         cv::Mat get_camera_frame();
 
