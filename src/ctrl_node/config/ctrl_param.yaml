@@ -9,11 +9,13 @@ fsmparam:
 kine_cons:
     vel_ver_max: 1.0
     vel_hor_max: 1.0
+    acc_ver_max: 0.2
+    acc_hor_max: 0.2
 
 gain: 
-    Kvp0: 1.5 #2.0
-    Kvp1: 1.5 #1.5
-    Kvp2: 1.5 #1.5
+    Kvp0: 1.0 #2.0
+    Kvp1: 1.0 #1.5
+    Kvp2: 1.0 #1.5
     Kvi0: 1.5 #1.8
     Kvi1: 1.5 #1.8
     Kvi2: 1.5 #1.8

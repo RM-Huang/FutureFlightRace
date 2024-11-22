@@ -32,5 +32,7 @@ namespace ctrl_node{
 
         read_param(nh, "kine_cons/vel_ver_max", kine_cons.vel_ver_max);
         read_param(nh, "kine_cons/vel_hor_max", kine_cons.vel_hor_max);
+        read_param(nh, "kine_cons/acc_ver_max", kine_cons.acc_ver_max);
+        read_param(nh, "kine_cons/acc_hor_max", kine_cons.acc_hor_max);
     }
 }

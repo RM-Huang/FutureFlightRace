@@ -69,6 +69,8 @@ namespace Controller{
         ctrl_node::Parameter_t param_;
         quadrotor_msgs::Px4ctrlDebug debug_msg_;
 
+        double get_vel_err(const Desired_State_t &des, const ctrl_node::Odom_Data_t &odom);
+
         public:
         void init(ctrl_node::Parameter_t &param);
         quadrotor_msgs::Px4ctrlDebug calculateControl(const Desired_State_t &des, 

@@ -25,6 +25,8 @@ namespace ctrl_node{
         struct kinematicsConstains{
             double vel_ver_max;
             double vel_hor_max;
+            double acc_ver_max;
+            double acc_hor_max;
         };
 
         struct FsmParam{

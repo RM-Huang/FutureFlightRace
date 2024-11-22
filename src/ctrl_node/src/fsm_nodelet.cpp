@@ -103,7 +103,7 @@ namespace ctrl_node{
         double des_v_z = des_a_z * delta_t;
 
         Controller::Desired_State_t des;
-        des.p = takeoff_state.start_pose.head<3>() + Eigen::Vector3d(0, 0, param.takeoff_state.height);
+        des.p = takeoff_state.start_pose.head<3>() + Eigen::Vector3d(0, 0, param.takeoff_state.height + 0.2);
         des.v = Eigen::Vector3d(0, 0, des_v_z);
         des.a = Eigen::Vector3d(0, 0, des_a_z);
         des.j = Eigen::Vector3d::Zero();

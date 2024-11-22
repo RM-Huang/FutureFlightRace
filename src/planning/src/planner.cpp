@@ -93,7 +93,7 @@ namespace planning{
                 return false;
             }
 
-            ros::Duration(0.5).sleep(); //Wait the controller stable
+            // ros::Duration(0.5).sleep(); //Wait the controller stable
             get_err(current_route, current_odom, pos_err, yaw_err);
 
             printf("current_target[x, y, z, yaw]: [%f, %f, %f, %f]\n", 
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]){
                                                                         ros::VoidConstPtr(),
                                                                         ros::TransportHints().tcpNoDelay());
     
-    planner.cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("cmd", 5);
+    planner.cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("cmd", 10);
 
     ros::Rate r(planner.planner_fre);
     while(ros::ok()){
