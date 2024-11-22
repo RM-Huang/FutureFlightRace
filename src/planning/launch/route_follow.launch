@@ -8,5 +8,13 @@
 
         <rosparam command="load" file="$(find planning)/config/planning_param.yaml" />
 	</node>
+	<node pkg="planning" type="qrDetect" name="qrDetect" output="screen">
+			
+		<!-- <remap from="~odom" to="/mavros/local_position/odom" />
+
+		<remap from="~cmd" to="/cmd" />
+
+        <rosparam command="load" file="$(find planning)/config/planning_param.yaml" /> -->
+	</node>
  
 </launch>

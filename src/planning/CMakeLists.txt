@@ -27,8 +27,13 @@ include_directories(
 add_executable(${PROJECT_NAME}
   src/planner.cpp
 )
-
+add_executable(qrDetect
+  src/qrDetect.cpp
+)
 target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(qrDetect
   ${catkin_LIBRARIES}
 )
 
