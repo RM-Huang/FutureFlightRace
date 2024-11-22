@@ -2,7 +2,7 @@
 #define __CONTROLLER_HPP
 
 #include <ros/ros.h>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <quadrotor_msgs/Px4ctrlDebug.h>
 
 #include "input.hpp"
@@ -68,6 +68,7 @@ namespace Controller{
         private:
         ctrl_node::Parameter_t param_;
         quadrotor_msgs::Px4ctrlDebug debug_msg_;
+        ctrl_node::Odom_Data_t odom_last_;
 
         double get_vel_err(const Desired_State_t &des, const ctrl_node::Odom_Data_t &odom);
 

@@ -1,33 +1,48 @@
 #include "controller.hpp"
 
 namespace Controller{
+    static double q2yaw(const Eigen::Quaterniond &ori)
+    {
+        return atan2(2.0*(ori.x()*ori.y() + ori.w()*ori.z()), 1.0 - 2.0 * (ori.y() * ori.y() + ori.z() * ori.z()));
+    }
+
     void Velocity_Control::init(ctrl_node::Parameter_t &param){
         param_ = param;
     }
 
     double Velocity_Control::get_vel_err(const Desired_State_t &des, const ctrl_node::Odom_Data_t &odom){
-        Eigen::Vector3d des_v = Kp.asDiagonal() * (des.p - odom.p);
-
+        // Eigen::Vector3d des_v = Kp.asDiagonal() * (des.p - odom.p);
+        return 0;
     }
 
     quadrotor_msgs::Px4ctrlDebug Velocity_Control::calculateControl(const Desired_State_t &des, 
                                                                     const ctrl_node::Odom_Data_t &odom, 
                                                                     VP_Controller_Output_t &u){
     // 
-        Eigen::Vector3d Kp;
-        Kp << param_.gain.Kvp0, param_.gain.Kvp1, param_.gain.Kvp2;
+        Eigen::Vector3d Kp(param_.gain.Kvp0, param_.gain.Kvp1, param_.gain.Kvp2);
+        Eigen::Vector3d Kd(param_.gain.Kvd0, param_.gain.Kvd1, param_.gain.Kvd2);
+        Eigen::Vector3d vel_max(param_.kine_cons.vel_hor_max,param_.kine_cons.vel_hor_max,param_.kine_cons.vel_ver_max);
+        Eigen::Vector3d acc_max(param_.kine_cons.acc_hor_max, param_.kine_cons.acc_hor_max, param_.kine_cons.acc_ver_max);
+        
+        //PD control
+        Eigen::Vector3d pos_err(des.p - odom.p);
+        u.velocity = Kp.asDiagonal() * pos_err + Kd.asDiagonal()*(pos_err - odom_last_.p)*param_.fsmparam.frequncy;
+        odom_last_.p = pos_err;
 
-        Eigen::Vector3d acc_max(param_.kine_cons.acc_hor_max, param_.kine_cons.acc_hor_max,, param_.kine_cons.acc_ver_max);
+        //limit vel
+        u.velocity = u.velocity.cwiseMax(-vel_max).cwiseMin(vel_max);
 
-        u.velocity = Kp.asDiagonal() * (des.p - odom.p);
-
-        Eigen::Vector3d vel_err = u.velocity - odom.v;
+        //limit acc
+        Eigen::Vector3d vel_err(u.velocity-odom.v);
+        vel_err = vel_err.cwiseMax(-acc_max).cwiseMin(acc_max);
         u.velocity = odom.v + vel_err;
-        // u.velocity(0) = std::min(u.velocity(0), param_.kine_cons.vel_hor_max);
-        // u.velocity(1) = std::min(u.velocity(1), param_.kine_cons.vel_hor_max);
-        // u.velocity(2) = std::min(u.velocity(2), param_.kine_cons.vel_ver_max);
-
-        u.yaw = des.yaw;
+        
+        //limit yaw
+        double odomYaw = q2yaw(odom.q);
+        double omega_err(des.yaw - odomYaw);
+        omega_err = omega_err > param_.kine_cons.omega_yaw_max?param_.kine_cons.omega_yaw_max:omega_err;
+        omega_err = omega_err < -param_.kine_cons.omega_yaw_max?-param_.kine_cons.omega_yaw_max:omega_err;
+        u.yaw = odomYaw + omega_err;
 
         debug_msg_.des_p_x = des.p(0);
         debug_msg_.des_p_y = des.p(1);

@@ -2,7 +2,7 @@
 #define TRAJ_FOLLOW_HPP
 
 #include <ros/ros.h>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <quadrotor_msgs/PositionCommand.h>
@@ -21,12 +21,13 @@ namespace planning{
         int planner_fre = 150;
         double MAX_VEL_HOR = 1.0;
         double MAX_VEL_VER = 1.0;
-        double MAX_OMEGA = 0.26; // 15deg
         double target_pos_inflation = 0.3;
+        double MAX_OMEGA = 0.26; // 15deg
         double target_yaw_inflation = 0.1; //6deg
 
         int current_route = 0;
         bool ctrl_ready_trigger = false;
+        Eigen::Vector3d pos_last = Eigen::Vector3d::Zero();
 
         PlanState plan_state;
         std::vector<std::vector<double>> route_list; // [x, y, z, yaw]^T

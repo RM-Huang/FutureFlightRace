@@ -27,6 +27,7 @@ namespace ctrl_node{
             double vel_hor_max;
             double acc_ver_max;
             double acc_hor_max;
+            double omega_yaw_max;
         };
 
         struct FsmParam{

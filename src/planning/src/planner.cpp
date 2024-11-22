@@ -56,16 +56,15 @@ namespace planning{
     }
 
     void Planner::publish_cmd(const Eigen::Vector4d& current_odom, const Eigen::Vector3d& pos_err, const double& yaw_err){
-        double local_planning_dur = get_min_duration(pos_err, yaw_err);
 
         quadrotor_msgs::PositionCommand cmd_msg;
 
         cmd_msg.header.stamp = ros::Time::now();
-        cmd_msg.position.x = current_odom(0) + pos_err(0) / local_planning_dur;
-        cmd_msg.position.y = current_odom(1) + pos_err(1) / local_planning_dur;
-        cmd_msg.position.z = current_odom(2) + pos_err(2) / local_planning_dur;
+        cmd_msg.position.x = current_odom(0) + pos_err(0) ;
+        cmd_msg.position.y = current_odom(1) + pos_err(1) ;
+        cmd_msg.position.z = current_odom(2) + pos_err(2) ;
 
-        cmd_msg.yaw = current_odom(3) + yaw_err / local_planning_dur;
+        cmd_msg.yaw = current_odom(3) + yaw_err;
 
         cmd_pub.publish(cmd_msg);
     }

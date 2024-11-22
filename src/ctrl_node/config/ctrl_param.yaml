@@ -8,9 +8,10 @@ fsmparam:
 
 kine_cons:
     vel_ver_max: 1.0
-    vel_hor_max: 1.0
-    acc_ver_max: 0.2
-    acc_hor_max: 0.2
+    vel_hor_max: 3.0
+    acc_ver_max: 0.5
+    acc_hor_max: 1
+    omega_yaw_max: 0.1
 
 gain: 
     Kvp0: 1.0 #2.0
@@ -19,9 +20,9 @@ gain:
     Kvi0: 1.5 #1.8
     Kvi1: 1.5 #1.8
     Kvi2: 1.5 #1.8
-    Kvd0: 1.0
-    Kvd1: 1.0
-    Kvd2: 1.0
+    Kvd0: 1
+    Kvd1: 1
+    Kvd2: 1
 
 msg_timeout:
     odom: 0.5
