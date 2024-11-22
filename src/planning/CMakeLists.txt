@@ -10,6 +10,8 @@ find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   quadrotor_msgs
+  cv_bridge
+  message_generation
 )
 
 catkin_package(
