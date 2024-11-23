@@ -2,6 +2,7 @@
 ## Third parts
 ```
 sudo apt-get install ros-noetic-usb-cam
+sudo apt-get install ros-noetic-camera-calibration
 sudo apt-get install ros-noetic-cv-bridge
 ```
 ## Simulation Step
