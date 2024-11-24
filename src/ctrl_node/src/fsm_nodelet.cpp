@@ -174,7 +174,7 @@ namespace ctrl_node{
             if(state_data.current_state.mode == "OFFBOARD"){
                 ROS_INFO("\033[32m[FSM]:Switch to OFFBOARD mode!\033[32m");
             }else if(state_data.previous_state.mode == "OFFBOARD"){
-                ROS_INFO("\033[32m[FSM]:Exit OFFBOARD mode! Switch to %s state.\033[32m", state_data.current_state.mode);
+                ROS_INFO("\033[32m[FSM]:Exit OFFBOARD mode! Switch to %s state.\033[32m", state_data.current_state.mode.c_str());
                 current_state = MANUAL;
             }
             state_data.previous_state = state_data.current_state;

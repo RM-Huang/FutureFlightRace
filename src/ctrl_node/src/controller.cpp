@@ -18,7 +18,7 @@ namespace Controller{
     quadrotor_msgs::Px4ctrlDebug Velocity_Control::calculateControl(const Desired_State_t &des, 
                                                                     const ctrl_node::Odom_Data_t &odom, 
                                                                     VP_Controller_Output_t &u){
-    // 
+        // 
         Eigen::Vector3d Kp(param_.gain.Kvp0, param_.gain.Kvp1, param_.gain.Kvp2);
         Eigen::Vector3d Kd(param_.gain.Kvd0, param_.gain.Kvd1, param_.gain.Kvd2);
         Eigen::Vector3d vel_max(param_.kine_cons.vel_hor_max,param_.kine_cons.vel_hor_max,param_.kine_cons.vel_ver_max);
@@ -44,6 +44,7 @@ namespace Controller{
         omega_err = omega_err < -param_.kine_cons.omega_yaw_max?-param_.kine_cons.omega_yaw_max:omega_err;
         u.yaw = odomYaw + omega_err;
 
+        //debug
         debug_msg_.des_p_x = des.p(0);
         debug_msg_.des_p_y = des.p(1);
         debug_msg_.des_p_z = des.p(2);
@@ -69,6 +70,7 @@ namespace Controller{
                                                                     const ctrl_node::Odom_Data_t &odom, 
                                                                     VP_Controller_Output_t &u){
     // 
-
+        quadrotor_msgs::Px4ctrlDebug data;
+        return data;
     }
 }

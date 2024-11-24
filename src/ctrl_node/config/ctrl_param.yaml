@@ -1,7 +1,7 @@
 controller_type: 1
 
 takeoff_state:
-    height: 4.0 # m
+    height: 1.2 # m
 
 fsmparam:
     frequncy: 100

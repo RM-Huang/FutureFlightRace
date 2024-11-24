@@ -5,28 +5,40 @@
 #include <eigen3/Eigen/Dense>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
-
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <map>
 
 class QrDetect
 {
 private:
+    
+    // px4
+    nav_msgs::Odometry odom_msg;
+    bool odom_received = false;
 
-    const uchar MIN_COUNT=5;
     // camera
-    ros::Subscriber sub_cam_down;
+    ros::Subscriber sub_cam_front,sub_cam_down,sub_odom;
     cv::Mat cam_down_matrix_,cam_front_matrix_;
     cv::Mat cam_down_coeff_,cam_front_coeff_;
     
     // aruco
+    struct QrInfo{
+        int id;
+        double time;
+        Eigen::Matrix4d T;
+        bool isOnGround=0;
+    };
+    const uchar MIN_COUNT=5;
     cv::Ptr<cv::aruco::Dictionary> dictionary;
-    std::vector<std::pair<int, cv::Mat>> saved_markers;
-    std::vector<char> occupied_ids;
+    std::vector<std::pair<QrInfo, cv::Mat>> saved_markers;
+    
+    std::map<int,std::vector<QrInfo>> map_markers;
 
 public:
     QrDetect(ros::NodeHandle& nh)
-        : occupied_ids(250,0)
     {
-        // 1. dwon camera info
+        // 1.camera_down info
         std::vector<double> cameraMatrixVec;
         std::vector<double> distCoeffsVec;
         if (!nh.getParam("cam_down_matrix", cameraMatrixVec) || cameraMatrixVec.size() != 9) {
@@ -37,70 +49,138 @@ public:
             ROS_ERROR("Failed to get cam_down_coeff");
             return;
         }
-
         cam_down_matrix_ = cv::Mat(cameraMatrixVec).reshape(0, 3).clone(); 
         cam_down_coeff_ = cv::Mat(distCoeffsVec).clone().t(); 
-        std::cout << cam_down_matrix_ << std::endl;
-        std::cout << cam_down_coeff_ << std::endl;
+
         // 2. front camera info
-
         dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_250);
-        sub_cam_down = nh.subscribe("/cam_down/image_raw", 1, &QrDetect::camDownCallback, this);
-        ROS_INFO("...QR detect running...");
-    }
 
+        // 3. ros pub sub
+        sub_odom = nh.subscribe("/mavros/local_position/odom", 1,&QrDetect::odomCallback, this,ros::TransportHints().tcpNoDelay());
+        ros::Duration(1).sleep();
+        // ROS_INFO("qrDetect waiting for odometry message...");
+        // while (ros::ok() && !odom_received) {
+        //     ros::spinOnce();             
+        //     ros::Duration(0.5).sleep();
+        //     std::cout << ".";std::cout.flush();
+        // }
+        odom_msg.pose.pose.orientation.w = 1;
+        odom_msg.pose.pose.orientation.x = 0;
+        odom_msg.pose.pose.orientation.y = 0;
+        odom_msg.pose.pose.orientation.z = 0;
+        odom_msg.pose.pose.position.x = 0;
+        odom_msg.pose.pose.position.y = 0;
+        odom_msg.pose.pose.position.z = 0;
+
+        ROS_INFO("Odometry message received!");
+
+        sub_cam_down = nh.subscribe("/cam_down/image_raw", 1, &QrDetect::camDownCallback, this,ros::TransportHints().tcpNoDelay());
+        sub_cam_front = nh.subscribe("/cam_front/image_raw", 1, &QrDetect::camFrontCallback, this,ros::TransportHints().tcpNoDelay());
+    }
+    
     void mainLoop(void)
     {
+
         // 1.show images
         for(auto marker:saved_markers)
         {
+            if(marker.first.isOnGround)continue;
+            
             cv::Mat cropped_marker;
-            std::string win_name = "marker"+std::to_string(marker.first);
+            std::string win_name = "marker"+std::to_string(marker.first.id);
             cv::resize(marker.second,cropped_marker,cv::Size(200,200));
             cv::imshow(win_name, cropped_marker);
             cv::waitKey(1);
         }
-    }
 
+    }
+    void odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+        odom_msg = *msg;  
+        odom_received = true;
+    }
+    void camFrontCallback(const sensor_msgs::Image::ConstPtr& msg) 
+    {    
+        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+        cv::Mat image = cv_ptr->image;
+        detectArUco(image);
+    }
     void camDownCallback(const sensor_msgs::Image::ConstPtr& msg) 
     {    
         cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-        cv::Mat image = cv_ptr->image.clone();
+        cv::Mat image = cv_ptr->image;
         detectArUco(image);
     }
-
     void detectArUco(cv::Mat& image) {
         std::vector<int> marker_ids;
         std::vector<std::vector<cv::Point2f>> marker_corners;
-
-        // 1.detect
+        std::vector<cv::Vec3d> rvecs, tvecs;
+        double time_now = ros::Time::now().toSec();
+        // 1. detect
         cv::aruco::detectMarkers(image, dictionary, marker_corners, marker_ids);
+        cv::aruco::estimatePoseSingleMarkers(marker_corners, 0.16, cam_down_matrix_, cam_down_coeff_, rvecs, tvecs);
 
-        // 2.
+        // 2. 
         if (!marker_ids.empty()) {
-
-            std::vector<cv::Vec3d> rvecs, tvecs;
-            cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
-            std::cout << cam_down_matrix_ << std::endl;
-            std::cout << cam_down_coeff_ << std::endl;
-            cv::aruco::estimatePoseSingleMarkers(marker_corners, 0.16, cam_down_matrix_, cam_down_coeff_, rvecs, tvecs);
-            std::cout<<"R :"<<rvecs[0]<<std::endl;
-            std::cout<<"T :"<<tvecs[0]<<std::endl;
-            // 3. 
             for (size_t i = 0; i < marker_ids.size(); ++i) {
+                cv::aruco::drawAxis(image, cam_down_matrix_, cam_down_coeff_, rvecs[i], tvecs[i], 0.1);
+                // 二维码在world下的位姿
+                cv::Mat R_cv;
+                cv::Rodrigues(rvecs[i], R_cv);  
+                Eigen::Matrix3d R_eigen;
+                R_eigen = Eigen::Map<Eigen::Matrix3d>(R_cv.ptr<double>(), 3, 3).transpose();
+                Eigen::Vector3d t_eigen;
+                t_eigen << tvecs[i][0], tvecs[i][1], tvecs[i][2];
+                Eigen::Matrix4d T = Eigen::Matrix4d::Identity();  
+                T.block<3, 3>(0, 0) = R_eigen;                    
+                T.block<3, 1>(0, 3) = t_eigen;   
+                Eigen::Matrix4d marker_in_world = cam2world(T);
+                QrInfo qrInfo;
+                qrInfo.id = marker_ids[i];
+                qrInfo.time = time_now;
+                qrInfo.T = marker_in_world;
+                if(abs(marker_in_world(2,2))>0.86)qrInfo.isOnGround=true;
+
+                // 0. 截图
                 std::vector<cv::Point2f> corners = marker_corners[i];
                 cv::Rect bounding_box = cv::boundingRect(corners);
                 cv::Mat cropped_marker = image(bounding_box).clone();
+                // 1. 误检测判断
+                int id = marker_ids[i];
+                bool isValid = 0;
+                if(map_markers[id].empty())isValid = 1;
+                else if((time_now - map_markers[id].back().time)<0.1)isValid = 1;
 
-                
-               // cv::aruco::estimatePoseSingleMarkers(marker_corners[i], 0.05, cam_down_matrix_, cam_down_coeff_, rvecs, tvecs);
-                cv::aruco::drawAxis(image, cam_down_matrix_, cam_down_coeff_, rvecs[i], tvecs[i], 0.1);
+                // 2. 
+                if(map_markers[id].size()<MIN_COUNT){
+                    if(isValid){
+                        map_markers[id].emplace_back(qrInfo);
+                    }
+                    else{
+                        map_markers.erase(id);
+                    }
+                    // 在1s内连续检测成功10次 保存二维码：ID，坐标，图像
+                    if(map_markers[id].size()==MIN_COUNT){
+                        Eigen::Vector3d t;t.setZero();
+                        Eigen::Matrix3d R;
+                        Eigen::Quaterniond avgR(qrInfo.T.block<3,3>(0,0));
+                        for(auto it:map_markers[id])
+                        {
+                            t += it.T.block<3,1>(0,3);
+                            Eigen::Quaterniond temp(it.T.block<3,3>(0,0));
+                            avgR.coeffs() += temp.coeffs();
+                        }
+                        t /= map_markers[id].size();
+                        R = avgR.normalized().toRotationMatrix();
+                        qrInfo.T.block<3,3>(0,0) = R;
+                        qrInfo.T.block<3,1>(0,3) = t;
 
-                if(occupied_ids[marker_ids[i]] < MIN_COUNT)
-                {
-                    if(++occupied_ids[marker_ids[i]]==MIN_COUNT)
-                    {
-                        saved_markers.emplace_back(marker_ids[i], cropped_marker);
+                        if(abs(R(2,2))>0.86) //30 deg
+                        {
+                            qrInfo.isOnGround = true;
+                            qrInfo.T.block<3,1>(0,3) *= (5/2); //修正距离
+                        }
+                        else qrInfo.isOnGround = false;
+                        saved_markers.emplace_back(qrInfo,cropped_marker);
                         ROS_INFO("NEW TAG ID:%d",marker_ids[i]);
                     }
                 }
@@ -108,9 +188,36 @@ public:
             }
         }
 
+        cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
         cv::imshow("ArUco Detection", image);
-        // std::cout <<"all marker:"<< saved_markers.size() << std::endl;
         cv::waitKey(1); 
     }
     
+    Eigen::Matrix4d cam2world(const Eigen::Matrix4d &pose)
+    {
+        Eigen::Matrix4d res;
+        //1.cam to body
+        Eigen::Matrix4d T_body_cam = Eigen::Matrix4d::Zero();
+        T_body_cam.block<3, 3>(0, 0) << 0,  0, 1,
+                                        -1, 0, 0,
+                                        0, -1, 0;
+        T_body_cam.block<4,1>(0,3)  << 0.1, 0, 0.05,1;
+        res = T_body_cam*pose;
+
+        //2.body to world
+        Eigen::Matrix4d T_world_body = Eigen::Matrix4d::Zero();
+        Eigen::Quaterniond R(
+            odom_msg.pose.pose.orientation.w,  
+            odom_msg.pose.pose.orientation.x,  
+            odom_msg.pose.pose.orientation.y,  
+            odom_msg.pose.pose.orientation.z 
+        );
+        T_world_body.block<3,3>(0,0) = R.toRotationMatrix();
+        T_world_body.block<4,1>(0,3) <<  odom_msg.pose.pose.position.x,
+                                         odom_msg.pose.pose.position.y,
+                                         odom_msg.pose.pose.position.z,
+                                         1;
+        res = T_world_body * res;
+        return res;
+    }
 };

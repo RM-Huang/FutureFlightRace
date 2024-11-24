@@ -17,6 +17,12 @@ namespace planning{
             FOLLOW = 1,
             LAND
         };
+        struct {
+            ros::Time start_time;
+            Eigen::Vector3d target_pos;
+            bool qr_pos_found = 0;
+            std::vector<Eigen::Vector3d> qr_detected_pose;
+        }landInfo;
 
         int planner_fre = 150;
         double MAX_VEL_HOR = 1.0;
@@ -35,6 +41,7 @@ namespace planning{
         nav_msgs::Odometry odom_msg;
 
         ros::Subscriber odom_sub;
+        ros::Subscriber qr_sub;
         ros::Subscriber ctrl_trigger_sub;
         
         ros::Publisher cmd_pub;
@@ -44,6 +51,8 @@ namespace planning{
         void odom_callback(const nav_msgs::OdometryConstPtr &msg);
 
         void ctrl_trigger_callback(const geometry_msgs::PoseStampedConstPtr &msg);
+
+        void qr_pose_callback(const geometry_msgs::Pose::ConstPtr& msg);
 
         double get_min_duration(const Eigen::Vector3d& position_err, const double& yaw_err);
 

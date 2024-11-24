@@ -41,6 +41,12 @@ namespace planning{
         }
     }
 
+    void Planner::qr_pose_callback(const geometry_msgs::Pose::ConstPtr& msg)
+    {
+        Eigen::Vector3d pose(msg->position.x, msg->position.y, msg->position.z);
+        landInfo.qr_detected_pose.emplace_back(pose);
+    }
+
     double Planner::get_min_duration(const Eigen::Vector3d& position_err, const double& yaw_err){
         double dur = std::max(std::abs(position_err[0] / MAX_VEL_HOR), std::abs(position_err[1] / MAX_VEL_HOR));
         dur = std::max(dur, std::abs(position_err[2] / MAX_VEL_VER));
@@ -106,7 +112,80 @@ namespace planning{
     }
 
     bool Planner::landing_process(){
+        double deadLine = 5;
+        double timeWindow = (ros::Time::now() - landInfo.start_time).toSec();
 
+        // 1. 找落点
+        if(timeWindow > deadLine && !landInfo.qr_pos_found)
+        {
+            landInfo.qr_pos_found = true;
+            landInfo.target_pos[0] = odom_msg.pose.pose.position.x;
+            landInfo.target_pos[1] = odom_msg.pose.pose.position.y;
+            landInfo.target_pos[2] = 0;
+        }
+        else{
+            if(landInfo.qr_detected_pose.size()>20 && !landInfo.qr_pos_found)
+            {
+                //1.计算平均值
+                Eigen::Vector3d avgPose(0.0, 0.0, 0.0); 
+                for(const auto& pose:landInfo.qr_detected_pose)avgPose += pose;  
+                avgPose /= landInfo.qr_detected_pose.size();
+
+                //2.找最大值
+                double maxDistance = 0;
+                uint32_t index = 0;
+                for (size_t i = 0; i < landInfo.qr_detected_pose.size(); ++i)
+                {
+
+                    double distance = (landInfo.qr_detected_pose[i] - avgPose).norm();
+                    if(distance>maxDistance)
+                    {
+                        maxDistance = distance;
+                        index = i;
+                    }
+                }
+
+                //3.足够精确则确定落点 
+                if(maxDistance<0.1){
+                    landInfo.qr_pos_found = true;
+                    landInfo.target_pos = avgPose;
+
+                }// 否则剔除离群点
+                else{
+                    landInfo.qr_detected_pose.erase(landInfo.qr_detected_pose.begin() + index); 
+                }
+                
+
+            }
+        }
+
+        // 2. 没找到直接退出
+        if(!landInfo.qr_pos_found)return true;
+
+        // 3. 降落
+        Eigen::Quaterniond ori;
+        ori.w() = odom_msg.pose.pose.orientation.w;
+        ori.x() = odom_msg.pose.pose.orientation.x;
+        ori.y() = odom_msg.pose.pose.orientation.y;
+        ori.z() = odom_msg.pose.pose.orientation.z;
+        double current_yaw = atan2(2.0*(ori.x()*ori.y() + ori.w()*ori.z()), 1.0 - 2.0 * (ori.y() * ori.y() + ori.z() * ori.z()));
+        Eigen::Vector4d current_odom(odom_msg.pose.pose.position.x, odom_msg.pose.pose.position.y, odom_msg.pose.pose.position.z, current_yaw);
+        Eigen::Vector3d pos_err;
+        double yaw_err;
+        Eigen::Vector4d err;
+        err.segment(0,3) = landInfo.target_pos;
+        err[3] = 0;
+        err = err - current_odom;
+        pos_err = err.segment(0,3);
+        yaw_err = err[3];
+        publish_cmd(current_odom, pos_err, yaw_err);
+
+        if(pos_err.norm() < target_pos_inflation && std::abs(yaw_err) < target_yaw_inflation)
+        {
+            return false;
+        }
+        return true;
+        
     }
 
     void Planner::main_loop(){
@@ -122,13 +201,20 @@ namespace planning{
             
             case FOLLOW:
                 if(!route_follow_process()){
-                    plan_state = STANDBY; // change to LAND mode
-                    ctrl_ready_trigger = false;
+                    plan_state = LAND; // change to LAND mode
+                    landInfo.start_time = ros::Time::now();
+                    landInfo.qr_detected_pose.clear();
                     ROS_INFO("\033[32m[planner]: Route following mission completed!\033[32m");
                 }
                 break;
 
             case LAND:
+                if(!landing_process())
+                {
+                    plan_state = STANDBY;
+                    ctrl_ready_trigger = false;
+                    ROS_INFO("\033[32m[planner]: Landing mission completed!\033[32m");      
+                }
                 break;
             
             default:
@@ -144,6 +230,9 @@ int main(int argc, char *argv[]){
     planning::Planner planner(nh);
 
     planner.odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 10, boost::bind(&planning::Planner::odom_callback, &planner, _1),
+                                                        ros::VoidConstPtr(),
+                                                        ros::TransportHints().tcpNoDelay());
+    planner.qr_sub = nh.subscribe<geometry_msgs::Pose>("/qr/pose", 1, boost::bind(&planning::Planner::qr_pose_callback, &planner, _1),
                                                         ros::VoidConstPtr(),
                                                         ros::TransportHints().tcpNoDelay());
 
