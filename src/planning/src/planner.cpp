@@ -95,7 +95,7 @@ namespace planning{
                 return false;
             }
 
-            ros::Duration(0.5).sleep(); //等待稳定
+            // ros::Duration(0.5).sleep(); //等待稳定
             get_err(current_route, current_odom, pos_err, yaw_err);
 
             printf("current_target[x, y, z, yaw]: [%f, %f, %f, %f]\n", 
@@ -284,7 +284,7 @@ cv::Mat Planner::get_camera_frame() {
             
             case FOLLOW:
                 if(!route_follow_process()){
-                    ros::Duration(0.5).sleep(); // Allow state transition stabilization
+                    // ros::Duration(0.5).sleep(); // Allow state transition stabilization
                     plan_state = LAND; // change to LAND mode
                     ctrl_ready_trigger = false;
                     ROS_INFO("\033[32m[planner]: Route following mission completed!\033[32m");
