@@ -22,9 +22,10 @@ namespace ctrl_node{
     {
         ros::Time toggle_takeoff_time;
         Eigen::Vector4d start_pose;
+        bool first_time = false;
         std::pair<bool, ros::Time> delay_trigger{std::pair<bool, ros::Time>(false, ros::Time(0))};
 
-        static constexpr double MOTORS_SPEEDUP_TIME = 3.0; // motors idle running for 3 seconds before takeoff
+        static constexpr double MOTORS_SPEEDUP_TIME = 0.5; // motors idle running for 3 seconds before takeoff
         static constexpr double DELAY_TRIGGER_TIME = 2.0;  // Time to be delayed when reach at target height
     };
     

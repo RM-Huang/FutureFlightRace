@@ -2,6 +2,7 @@
 #define __READPARAM_HPP
 
 #include <ros/ros.h>
+#include <Eigen/Dense>
 
 namespace ctrl_node{
 
@@ -20,6 +21,7 @@ namespace ctrl_node{
 
         struct AutoTakeoff{
             double height;
+            Eigen::Vector3d takeoff_pos;
         };
 
         struct kinematicsConstains{

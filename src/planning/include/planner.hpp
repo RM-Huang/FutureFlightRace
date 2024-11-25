@@ -6,7 +6,7 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <quadrotor_msgs/PositionCommand.h>
-
+#include <mavros_msgs/CommandLong.h>
 namespace planning{
 
     class Planner{
@@ -19,6 +19,9 @@ namespace planning{
         };
         struct {
             ros::Time start_time;
+            //
+            Eigen::Vector3d candidate_pos = Eigen::Vector3d::Zero();
+            // 
             Eigen::Vector3d target_pos;
             bool qr_pos_found = 0;
             std::vector<Eigen::Vector3d> qr_detected_pose;
@@ -43,6 +46,7 @@ namespace planning{
         ros::Subscriber odom_sub;
         ros::Subscriber qr_sub;
         ros::Subscriber ctrl_trigger_sub;
+        ros::ServiceClient FCU_command_srv;
         
         ros::Publisher cmd_pub;
 
@@ -65,6 +69,8 @@ namespace planning{
         bool landing_process();
 
         void main_loop();
+
+        bool force_arm_disarm(bool arm);
     };
 }
 

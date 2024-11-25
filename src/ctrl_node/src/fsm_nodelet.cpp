@@ -98,14 +98,15 @@ namespace ctrl_node{
     }
 
     Controller::Desired_State_t FSM::get_pv_speed_up_des(const ros::Time& now){
-        double delta_t = (now - takeoff_state.toggle_takeoff_time).toSec();
-        double des_a_z = 0.05;
-        double des_v_z = des_a_z * delta_t;
+        // double delta_t = (now - takeoff_state.toggle_takeoff_time).toSec();
+        // double des_a_z = 0.05;
+        // double des_v_z = des_a_z * delta_t;
 
         Controller::Desired_State_t des;
-        des.p = takeoff_state.start_pose.head<3>() + Eigen::Vector3d(0, 0, param.takeoff_state.height + 0.2);
-        des.v = Eigen::Vector3d(0, 0, des_v_z);
-        des.a = Eigen::Vector3d(0, 0, des_a_z);
+        // des.p = takeoff_state.start_pose.head<3>() + Eigen::Vector3d(0, 0, param.takeoff_state.height + 0.2);
+        des.p = odom_data.p;
+        des.v = Eigen::Vector3d::Zero();
+        des.a = Eigen::Vector3d::Zero();
         des.j = Eigen::Vector3d::Zero();
         des.yaw = takeoff_state.start_pose(3);
         des.yaw_rate = 0.0;
@@ -117,7 +118,8 @@ namespace ctrl_node{
         // double speed = std::max(param.takeoff_state.vel_max, param.takeoff_state.height - odom.p(2));
 
         Controller::Desired_State_t des;
-        des.p = takeoff_state.start_pose.head<3>() + Eigen::Vector3d(0, 0, param.takeoff_state.height);
+        des.p << odom.p(0), odom.p(1), takeoff_state.start_pose(2);
+        des.p = des.p + Eigen::Vector3d(0, 0, param.takeoff_state.height);
         // des.v = Eigen::Vector3d(0, 0, speed);
         des.v = Eigen::Vector3d::Zero();
         des.a = Eigen::Vector3d::Zero();
@@ -190,13 +192,14 @@ namespace ctrl_node{
                         // Auto_Takeoff conditions check
                         if(state_data.current_state.armed){
                             ROS_ERROR("[FSM]:Reject Auto_Takeoff, vehicle is already armed!");
-                        }else if(odom_data.v.norm() > 0.1){
-                            ROS_ERROR("[FSM]:Reject Auto_Takeoff, Odom_Vel=%fm/s, non-static takeoff is not allowed!", odom_data.v.norm());
+                        // }else if(odom_data.v.norm() > 0.1){
+                        //     ROS_ERROR("[FSM]:Reject Auto_Takeoff, Odom_Vel=%fm/s, non-static takeoff is not allowed!", odom_data.v.norm());
                         }else{
                             if(!toggle_arm_disarm(true)){ //arming rejected
                                 ROS_ERROR("[FSM]:takeoff arming rejected by PX4!");
                             }else{
                                 current_state = TAKEOFF;
+                                takeoff_state.first_time = true;
                                 set_start_pose_for_takeoff(odom_data);
                                 ROS_INFO("\033[32m[FSM] MANUAL --> TAKEOFF(L1)\033[32m");
                             }
@@ -213,9 +216,10 @@ namespace ctrl_node{
                 if(state_data.current_state.mode != "OFFBOARD"){
                     current_state = MANUAL;
                     ROS_INFO("\033[32m[FSM]:Exit OFFBOARD Mode, TAKEOFF --> MANUAL(L2)\033[32m");
-                }else if((now_time - takeoff_state.toggle_takeoff_time).toSec() < AutoTakeoff_t::MOTORS_SPEEDUP_TIME){
+                }else if(((now_time - takeoff_state.toggle_takeoff_time).toSec() < AutoTakeoff_t::MOTORS_SPEEDUP_TIME 
+                            || (odom_data.p.head<2>() - param.takeoff_state.takeoff_pos.head<2>()).norm() > 0.8) && takeoff_state.first_time){
                     des = get_pv_speed_up_des(now_time);
-                }else if(odom_data.p(2) >= (takeoff_state.start_pose(2) + param.takeoff_state.height)){ // reach desired height
+                }else if(odom_data.p(2) >= (takeoff_state.start_pose(2) + param.takeoff_state.height-0.1)){ // reach desired height
                     set_hov_with_odom();
                     takeoff_state.delay_trigger.first = true;
                     takeoff_state.delay_trigger.second = now_time + ros::Duration(AutoTakeoff_t::DELAY_TRIGGER_TIME);
@@ -224,6 +228,10 @@ namespace ctrl_node{
 
                     ROS_INFO("\033[32m[FSM] TAKEOFF --> HOVER(L2)\033[32m");
                 }else{
+                    if(takeoff_state.first_time){
+                        set_start_pose_for_takeoff(odom_data);
+                        takeoff_state.first_time = false;
+                    }
                     des = get_takeoff_des(odom_data);
                 }
                 break;

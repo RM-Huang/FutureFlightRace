@@ -8,6 +8,8 @@ namespace Controller{
 
     void Velocity_Control::init(ctrl_node::Parameter_t &param){
         param_ = param;
+        input.vel_last.setZero();
+        input.yaw_last = 0;
     }
 
     double Velocity_Control::get_vel_err(const Desired_State_t &des, const ctrl_node::Odom_Data_t &odom){
@@ -26,23 +28,24 @@ namespace Controller{
         
         //PD control
         Eigen::Vector3d pos_err(des.p - odom.p);
-        u.velocity = Kp.asDiagonal() * pos_err + Kd.asDiagonal()*(pos_err - odom_last_.p)*param_.fsmparam.frequncy;
+        u.velocity = Kp.asDiagonal() * pos_err + Kd.asDiagonal()*(pos_err - odom_last_.p);
         odom_last_.p = pos_err;
 
         //limit vel
         u.velocity = u.velocity.cwiseMax(-vel_max).cwiseMin(vel_max);
 
         //limit acc
-        Eigen::Vector3d vel_err(u.velocity-odom.v);
+        Eigen::Vector3d vel_err(u.velocity-input.vel_last);
         vel_err = vel_err.cwiseMax(-acc_max).cwiseMin(acc_max);
-        u.velocity = odom.v + vel_err;
+        u.velocity = input.vel_last + vel_err;
+        input.vel_last = u.velocity;
         
         //limit yaw
-        double odomYaw = q2yaw(odom.q);
-        double omega_err(des.yaw - odomYaw);
+        double omega_err(des.yaw - input.yaw_last);
         omega_err = omega_err > param_.kine_cons.omega_yaw_max?param_.kine_cons.omega_yaw_max:omega_err;
         omega_err = omega_err < -param_.kine_cons.omega_yaw_max?-param_.kine_cons.omega_yaw_max:omega_err;
-        u.yaw = odomYaw + omega_err;
+        u.yaw =  input.yaw_last + omega_err;
+        input.yaw_last = u.yaw;
 
         //debug
         debug_msg_.des_p_x = des.p(0);

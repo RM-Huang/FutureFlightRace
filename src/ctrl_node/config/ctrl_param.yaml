@@ -2,27 +2,29 @@ controller_type: 1
 
 takeoff_state:
     height: 1.2 # m
+    takeoff_pos_x: 0.0
+    takeoff_pos_y: 0.0
 
 fsmparam:
     frequncy: 100
 
 kine_cons:
     vel_ver_max: 1.0
-    vel_hor_max: 3.0
+    vel_hor_max: 2.0
     acc_ver_max: 0.5
-    acc_hor_max: 1
-    omega_yaw_max: 0.1
+    acc_hor_max: 1.5
+    omega_yaw_max: 0.2
 
 gain: 
-    Kvp0: 1.0 #2.0
-    Kvp1: 1.0 #1.5
-    Kvp2: 1.0 #1.5
+    Kvp0: 1 #2.0
+    Kvp1: 1 #1.5
+    Kvp2: 1 #1.5
     Kvi0: 1.5 #1.8
     Kvi1: 1.5 #1.8
     Kvi2: 1.5 #1.8
-    Kvd0: 1
-    Kvd1: 1
-    Kvd2: 1
+    Kvd0: 120
+    Kvd1: 120
+    Kvd2: 100
 
 msg_timeout:
     odom: 0.5

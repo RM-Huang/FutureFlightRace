@@ -44,6 +44,10 @@ namespace planning{
     void Planner::qr_pose_callback(const geometry_msgs::Pose::ConstPtr& msg)
     {
         Eigen::Vector3d pose(msg->position.x, msg->position.y, msg->position.z);
+        if(pose[2]>1.5){
+            landInfo.candidate_pos = pose;
+            return;
+        }
         landInfo.qr_detected_pose.emplace_back(pose);
     }
 
@@ -124,6 +128,7 @@ namespace planning{
             landInfo.target_pos[2] = 0;
         }
         else{
+            
             if(landInfo.qr_detected_pose.size()>20 && !landInfo.qr_pos_found)
             {
                 //1.计算平均值
@@ -158,11 +163,7 @@ namespace planning{
 
             }
         }
-
-        // 2. 没找到直接退出
-        if(!landInfo.qr_pos_found)return true;
-
-        // 3. 降落
+        // 2. 控制
         Eigen::Quaterniond ori;
         ori.w() = odom_msg.pose.pose.orientation.w;
         ori.x() = odom_msg.pose.pose.orientation.x;
@@ -174,15 +175,14 @@ namespace planning{
         double yaw_err;
         Eigen::Vector4d err;
         err.segment(0,3) = landInfo.target_pos;
-        err[3] = 0;
+        err[3] = 0;//yaw
         err = err - current_odom;
         pos_err = err.segment(0,3);
         yaw_err = err[3];
         publish_cmd(current_odom, pos_err, yaw_err);
-
-        if(pos_err.norm() < target_pos_inflation && std::abs(yaw_err) < target_yaw_inflation)
+        if(pos_err.norm() < target_pos_inflation)
         {
-            return false;
+            if(landInfo.qr_pos_found)return false;
         }
         return true;
         
@@ -195,6 +195,7 @@ namespace planning{
                 if(ctrl_ready_trigger){
                     ros::Duration(1.0).sleep();
                     plan_state = FOLLOW;
+                    current_route = 0;
                     ROS_INFO("\033[32m[planner]: Start route following!\033[32m");
                 }
                 break;
@@ -203,6 +204,15 @@ namespace planning{
                 if(!route_follow_process()){
                     plan_state = LAND; // change to LAND mode
                     landInfo.start_time = ros::Time::now();
+                    if(landInfo.candidate_pos[2]>1.5){
+                        landInfo.target_pos = landInfo.candidate_pos;
+                        landInfo.target_pos[2] = odom_msg.pose.pose.position.z;
+                    }
+                    else{
+                        landInfo.target_pos[0] = odom_msg.pose.pose.position.x;
+                        landInfo.target_pos[1] = odom_msg.pose.pose.position.y;
+                        landInfo.target_pos[2] = odom_msg.pose.pose.position.z;
+                    }
                     landInfo.qr_detected_pose.clear();
                     ROS_INFO("\033[32m[planner]: Route following mission completed!\033[32m");
                 }
@@ -213,13 +223,36 @@ namespace planning{
                 {
                     plan_state = STANDBY;
                     ctrl_ready_trigger = false;
-                    ROS_INFO("\033[32m[planner]: Landing mission completed!\033[32m");      
+                    ROS_INFO("\033[32m[planner]: Landing mission completed!\033[32m");
+                    force_arm_disarm(0);      
                 }
                 break;
             
             default:
                 break;
         }
+    }
+
+    bool Planner:: force_arm_disarm(bool arm)
+    {
+        // https://mavlink.io/en/messages/common.html#MAV_CMD_COMPONENT_ARM_DISARM
+        mavros_msgs::CommandLong force_arm_disarm_srv;
+        force_arm_disarm_srv.request.broadcast = false;
+        force_arm_disarm_srv.request.command = 400; // MAV_CMD_COMPONENT_ARM_DISARM
+        force_arm_disarm_srv.request.param1 = arm;
+        force_arm_disarm_srv.request.param2 = 21196.0;	  // force
+        force_arm_disarm_srv.request.confirmation = true;
+
+        if (!(FCU_command_srv.call(force_arm_disarm_srv) && force_arm_disarm_srv.response.success))
+        {
+        if (arm)
+            ROS_INFO("\033[32m ARM rejected by PX4!\033[32m");
+        else
+            ROS_ERROR("DISARM rejected by PX4!");
+
+        return false;
+        }
+        return true;
     }
 }
 
@@ -242,6 +275,8 @@ int main(int argc, char *argv[]){
                                                                         ros::TransportHints().tcpNoDelay());
     
     planner.cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("cmd", 10);
+
+    planner.FCU_command_srv = nh.serviceClient<mavros_msgs::CommandLong>("/mavros/cmd/command");
 
     ros::Rate r(planner.planner_fre);
     while(ros::ok()){

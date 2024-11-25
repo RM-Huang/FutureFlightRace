@@ -22,6 +22,8 @@ namespace ctrl_node{
         read_param(nh, "gain/Kvd2", gain.Kvd2);
 
         read_param(nh, "takeoff_state/height", takeoff_state.height);
+        read_param(nh, "takeoff_state/takeoff_pos_x", takeoff_state.takeoff_pos(0));
+        read_param(nh, "takeoff_state/takeoff_pos_y", takeoff_state.takeoff_pos(1));
 
         read_param(nh, "fsmparam/frequncy", fsmparam.frequncy);
 
@@ -35,6 +37,13 @@ namespace ctrl_node{
         read_param(nh, "kine_cons/acc_ver_max", kine_cons.acc_ver_max);
         read_param(nh, "kine_cons/acc_hor_max", kine_cons.acc_hor_max);
         read_param(nh, "kine_cons/omega_yaw_max", kine_cons.omega_yaw_max);
+
+        // kine_cons.vel_ver_max/=fsmparam.frequncy;
+        // kine_cons.vel_hor_max/=fsmparam.frequncy;
+        kine_cons.acc_ver_max/=fsmparam.frequncy;
+        kine_cons.acc_hor_max/=fsmparam.frequncy;
+        kine_cons.omega_yaw_max/=fsmparam.frequncy;
+
 
     }
 }

@@ -19,6 +19,7 @@ private:
 
     // camera
     ros::Subscriber sub_cam_front,sub_cam_down,sub_odom;
+    ros::Publisher pub_qr_pose;
     cv::Mat cam_down_matrix_,cam_front_matrix_;
     cv::Mat cam_down_coeff_,cam_front_coeff_;
     
@@ -27,7 +28,8 @@ private:
         int id;
         double time;
         Eigen::Matrix4d T;
-        bool isOnGround=0;
+        uint32_t pubCnt = 0;
+        bool isOnGround = 0;
     };
     const uchar MIN_COUNT=5;
     cv::Ptr<cv::aruco::Dictionary> dictionary;
@@ -76,6 +78,7 @@ public:
 
         sub_cam_down = nh.subscribe("/cam_down/image_raw", 1, &QrDetect::camDownCallback, this,ros::TransportHints().tcpNoDelay());
         sub_cam_front = nh.subscribe("/cam_front/image_raw", 1, &QrDetect::camFrontCallback, this,ros::TransportHints().tcpNoDelay());
+        pub_qr_pose = nh.advertise<geometry_msgs::Pose>("/qr/pose", 5);
     }
     
     void mainLoop(void)
@@ -84,11 +87,21 @@ public:
         // 1.show images
         for(auto marker:saved_markers)
         {
-            if(marker.first.isOnGround)continue;
+            QrInfo qr = marker.first;
+            cv::Mat image = marker.second;
+            if(qr.isOnGround)
+            {
+                if(qr.pubCnt<5)
+                {
+                    qrPosePub(qr.T);
+                    qr.pubCnt++;
+                }
+                continue;
+            }
             
             cv::Mat cropped_marker;
             std::string win_name = "marker"+std::to_string(marker.first.id);
-            cv::resize(marker.second,cropped_marker,cv::Size(200,200));
+            cv::resize(image,cropped_marker,cv::Size(200,200));
             cv::imshow(win_name, cropped_marker);
             cv::waitKey(1);
         }
@@ -178,6 +191,7 @@ public:
                         {
                             qrInfo.isOnGround = true;
                             qrInfo.T.block<3,1>(0,3) *= (5/2); //修正距离
+                            qrInfo.T(3,2) = 2;
                         }
                         else qrInfo.isOnGround = false;
                         saved_markers.emplace_back(qrInfo,cropped_marker);
@@ -192,8 +206,52 @@ public:
         cv::imshow("ArUco Detection", image);
         cv::waitKey(1); 
     }
-    
+    void qrPosePub(const Eigen::Matrix4d &pose)
+    {
+        geometry_msgs::Pose pose_msg;
+        Eigen::Quaterniond R(pose.block<3, 3>(0, 0));
+        Eigen::Vector3d t = pose.block<3, 1>(0, 3);
+
+        pose_msg.position.x = t[0]; 
+        pose_msg.position.y = t[1];
+        pose_msg.position.z = t[2];
+
+        pose_msg.orientation.x = R.x();
+        pose_msg.orientation.y = R.y();
+        pose_msg.orientation.z = R.z();
+        pose_msg.orientation.w = R.w();
+
+        pub_qr_pose.publish(pose_msg);
+
+    }
     Eigen::Matrix4d cam2world(const Eigen::Matrix4d &pose)
+    {
+        Eigen::Matrix4d res;
+        //1.cam to body
+        Eigen::Matrix4d T_body_cam = Eigen::Matrix4d::Zero();
+        T_body_cam.block<3, 3>(0, 0) << 0,  0, 1,
+                                        -1, 0, 0,
+                                        0, -1, 0;
+        T_body_cam.block<4,1>(0,3)  << 0.1, 0, 0.05,1;
+        res = T_body_cam*pose;
+
+        //2.body to world
+        Eigen::Matrix4d T_world_body = Eigen::Matrix4d::Zero();
+        Eigen::Quaterniond R(
+            odom_msg.pose.pose.orientation.w,  
+            odom_msg.pose.pose.orientation.x,  
+            odom_msg.pose.pose.orientation.y,  
+            odom_msg.pose.pose.orientation.z 
+        );
+        T_world_body.block<3,3>(0,0) = R.toRotationMatrix();
+        T_world_body.block<4,1>(0,3) <<  odom_msg.pose.pose.position.x,
+                                         odom_msg.pose.pose.position.y,
+                                         odom_msg.pose.pose.position.z,
+                                         1;
+        res = T_world_body * res;
+        return res;
+    }
+    Eigen::Matrix4d cam_down2world(const Eigen::Matrix4d &pose)
     {
         Eigen::Matrix4d res;
         //1.cam to body

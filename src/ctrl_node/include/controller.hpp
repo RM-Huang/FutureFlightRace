@@ -48,8 +48,9 @@ namespace Controller{
     struct VP_Controller_Output_t{
         Eigen::Vector3d position;
         Eigen::Vector3d velocity;
-
-        double yaw;
+        Eigen::Vector3d pos_last;
+        Eigen::Vector3d vel_last;
+        double yaw,yaw_last;
     };
 
     class Position_Control{
@@ -69,6 +70,7 @@ namespace Controller{
         ctrl_node::Parameter_t param_;
         quadrotor_msgs::Px4ctrlDebug debug_msg_;
         ctrl_node::Odom_Data_t odom_last_;
+        VP_Controller_Output_t input;
 
         double get_vel_err(const Desired_State_t &des, const ctrl_node::Odom_Data_t &odom);
 

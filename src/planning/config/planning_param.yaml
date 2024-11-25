@@ -6,11 +6,11 @@ max_vel_ver: 1.5
 
 max_omega: 0.26
 
-target_pos_inflation: 0.1
+target_pos_inflation: 0.15
 
 target_yaw_inflation: 0.1
 
-route_list_x: [0.0, 3.0]
+route_list_x: [0.0, 10.0]
 
 route_list_y: [0.0, 0.0]
 
