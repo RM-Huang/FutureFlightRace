@@ -41,7 +41,12 @@ namespace ctrl_node{
         read_param(nh, "gain/Omg_eso_pos2", gain.att_eso.Omg_eso_pos2);
 
         read_param(nh, "takeoff_state/height", takeoff_state.height);
+<<<<<<< HEAD
         read_param(nh, "takeoff_state/speed", takeoff_state.speed);
+=======
+        read_param(nh, "takeoff_state/takeoff_pos_x", takeoff_state.takeoff_pos(0));
+        read_param(nh, "takeoff_state/takeoff_pos_y", takeoff_state.takeoff_pos(1));
+>>>>>>> 7f501b5762bfb252f5d22141b2782e27051795bf
 
         read_param(nh, "fsmparam/frequncy", fsmparam.frequncy);
 
@@ -60,12 +65,21 @@ namespace ctrl_node{
         read_param(nh, "kine_cons/acc_hor_max", kine_cons.acc_hor_max);
         read_param(nh, "kine_cons/omega_yaw_max", kine_cons.omega_yaw_max);
 
+<<<<<<< HEAD
         read_param(nh, "thrust_model/print_value", thr_map.print_val);
         read_param(nh, "thrust_model/K1", thr_map.K1);
         read_param(nh, "thrust_model/K2", thr_map.K2);
         read_param(nh, "thrust_model/K3", thr_map.K3);
         read_param(nh, "thrust_model/accurate_thrust_model", thr_map.accurate_thrust_model);
         read_param(nh, "thrust_model/hover_percentage", thr_map.hover_percentage);
+=======
+        // kine_cons.vel_ver_max/=fsmparam.frequncy;
+        // kine_cons.vel_hor_max/=fsmparam.frequncy;
+        kine_cons.acc_ver_max/=fsmparam.frequncy;
+        kine_cons.acc_hor_max/=fsmparam.frequncy;
+        kine_cons.omega_yaw_max/=fsmparam.frequncy;
+
+>>>>>>> 7f501b5762bfb252f5d22141b2782e27051795bf
 
     }
 }

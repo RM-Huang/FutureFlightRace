@@ -55,12 +55,18 @@ namespace Controller{
         /* position and velocity controller output */
         Eigen::Vector3d position;
         Eigen::Vector3d velocity;
+<<<<<<< HEAD
         double yaw;
 
         /* attitude and rate controller output */
         Eigen::Quaterniond q; // Orientation of the body frame with respect to the world frame
         Eigen::Vector3d bodyrates; // Body rates in body frame, [rad/s]
         double thrust; // Collective mass normalized thrust
+=======
+        Eigen::Vector3d pos_last;
+        Eigen::Vector3d vel_last;
+        double yaw,yaw_last;
+>>>>>>> 7f501b5762bfb252f5d22141b2782e27051795bf
     };
 
     class Position_Control{
@@ -80,6 +86,7 @@ namespace Controller{
         ctrl_node::Parameter_t param_;
         quadrotor_msgs::Px4ctrlDebug debug_msg_;
         ctrl_node::Odom_Data_t odom_last_;
+        VP_Controller_Output_t input;
 
         double get_vel_err(const Desired_State_t &des, const ctrl_node::Odom_Data_t &odom);
 

@@ -5,18 +5,24 @@ gra         : 9.81
 max_manual_vel: 0.0
 
 takeoff_state:
+<<<<<<< HEAD
     height: 2.0 # m
     speed: 0.6 # m/s
+=======
+    height: 1.2 # m
+    takeoff_pos_x: 0.0
+    takeoff_pos_y: 0.0
+>>>>>>> 7f501b5762bfb252f5d22141b2782e27051795bf
 
 fsmparam:
     frequncy: 100
 
 kine_cons:
     vel_ver_max: 1.0
-    vel_hor_max: 3.0
+    vel_hor_max: 2.0
     acc_ver_max: 0.5
-    acc_hor_max: 1
-    omega_yaw_max: 0.1
+    acc_hor_max: 1.5
+    omega_yaw_max: 0.2
 
 thrust_model: # The model that maps thrust signal u(0~1) to real thrust force F(Unit:N): F=K1*Voltage^K2*(K3*u^2+(1-K3)*u). 
     print_value: false # display the value of “thr_scale_compensate” or “hover_percentage” during thrust model estimating.
@@ -29,6 +35,7 @@ thrust_model: # The model that maps thrust signal u(0~1) to real thrust force F(
     hover_percentage: 0.5  # Thrust percentage in Stabilize/Arco mode # *
 
 gain: 
+<<<<<<< HEAD
     # velocity PID
     Kvp0: 1.0 #2.0
     Kvp1: 1.0 #1.5
@@ -63,6 +70,17 @@ gain:
     Omg_eso_pos0: 1
     Omg_eso_pos1: 1
     Omg_eso_pos2: 1
+=======
+    Kvp0: 1 #2.0
+    Kvp1: 1 #1.5
+    Kvp2: 1 #1.5
+    Kvi0: 1.5 #1.8
+    Kvi1: 1.5 #1.8
+    Kvi2: 1.5 #1.8
+    Kvd0: 120
+    Kvd1: 120
+    Kvd2: 100
+>>>>>>> 7f501b5762bfb252f5d22141b2782e27051795bf
 
 msg_timeout:
     odom: 0.5
