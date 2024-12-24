@@ -24,7 +24,7 @@ namespace ctrl_node{
         Eigen::Vector4d start_pose;
         std::pair<bool, ros::Time> delay_trigger{std::pair<bool, ros::Time>(false, ros::Time(0))};
 
-        static constexpr double MOTORS_SPEEDUP_TIME = 3.0; // motors idle running for 3 seconds before takeoff
+        static constexpr double MOTORS_SPEEDUP_TIME = 1.0; // motors idle running for 3 seconds before takeoff
         static constexpr double DELAY_TRIGGER_TIME = 2.0;  // Time to be delayed when reach at target height
     };
     
@@ -54,6 +54,7 @@ namespace ctrl_node{
             ros::Subscriber state_sub;
             ros::Subscriber extended_state_sub;
             ros::Subscriber odom_sub;
+            ros::Subscriber imu_sub;
             ros::Subscriber cmd_sub;
 
             ros::Publisher ctrl_pv_pub; // position, velocity ctrl cmd
@@ -85,9 +86,13 @@ namespace ctrl_node{
 
             void publish_trigger(const nav_msgs::Odometry &odom_msg);
 
-            void publish_position_ctrl(const Controller::VP_Controller_Output_t &u, const ros::Time &stamp);
+            void publish_position_ctrl(const Controller::Controller_Output_t &u, const ros::Time &stamp);
 
-            void publish_velocity_ctrl(const Controller::VP_Controller_Output_t &u, const ros::Time &stamp);
+            void publish_velocity_ctrl(const Controller::Controller_Output_t &u, const ros::Time &stamp);
+
+            void publish_bodyrate_ctrl(const Controller::Controller_Output_t &u, const ros::Time &stamp);
+
+            void publish_attitude_ctrl(const Controller::Controller_Output_t &u, const ros::Time &stamp);
 
             bool odom_is_received(const ros::Time &now_time);
 
@@ -98,10 +103,12 @@ namespace ctrl_node{
             State_Data_t state_data;
             ExtendedState_Data_t extended_state_data;
             Odom_Data_t odom_data;
+            Imu_Data_t imu_data;
             Command_Data_t cmd_data;
             Parameter_t param;
             Controller::Velocity_Control vel_controller;
             Controller::Position_Control pos_controller;
+            Controller::Attitude_Angular_Control att_ang_controller;
 
             void onInit(void);
     };

@@ -1,7 +1,12 @@
-controller_type: 1
+controller_type: 2 # 0:position, 1:velocity, 2:attitude, 3:angular_velocity
+estimator_type: 0 # 0:ude, 1:TVUDE, 2:ESO
+mass        : 4 # kg 需根据实际飞机的重量调整
+gra         : 9.81
+max_manual_vel: 0.0
 
 takeoff_state:
-    height: 1.2 # m
+    height: 2.0 # m
+    speed: 0.6 # m/s
 
 fsmparam:
     frequncy: 100
@@ -13,7 +18,18 @@ kine_cons:
     acc_hor_max: 1
     omega_yaw_max: 0.1
 
+thrust_model: # The model that maps thrust signal u(0~1) to real thrust force F(Unit:N): F=K1*Voltage^K2*(K3*u^2+(1-K3)*u). 
+    print_value: false # display the value of “thr_scale_compensate” or “hover_percentage” during thrust model estimating.
+    accurate_thrust_model: false  # This can always enabled if don't require accurate control performance :-)
+    # accurate thrust mapping parameters
+    K1: 0.7583 # Needs precise calibration!
+    K2: 1.6942 # Needs precise calibration!
+    K3: 0.6786 # Needs precise calibration! K3 equals THR_MDL_FAC in https://docs.px4.io/master/en/config_mc/pid_tuning_guide_multicopter.html.
+    # approximate thrust mapping parameters
+    hover_percentage: 0.5  # Thrust percentage in Stabilize/Arco mode # *
+
 gain: 
+    # velocity PID
     Kvp0: 1.0 #2.0
     Kvp1: 1.0 #1.5
     Kvp2: 1.0 #1.5
@@ -23,6 +39,30 @@ gain:
     Kvd0: 1
     Kvd1: 1
     Kvd2: 1
+    # attitude PID
+    Kp0: 1.5 #2.0
+    Kp1: 1.5 #1.5
+    Kp2: 1.5 #1.5
+    Kv0: 1.5 #1.8
+    Kv1: 1.5 #1.8
+    Kv2: 1.5 #1.8
+    # ↓↓↓ used in UDE.
+    Trou0: 0.5
+    Trou1: 0.5
+    Trou2: 0.5
+    # ↓↓↓ used in TVUDE.
+    Trou_min0: 0.5
+    Trou_min1: 0.5
+    Trou_min2: 0.5
+    Trou_max0: 10
+    Trou_max1: 10
+    Trou_max2: 10
+    t_min: 2
+    t_max: 8
+    # ↓↓↓ used in ESO.
+    Omg_eso_pos0: 1
+    Omg_eso_pos1: 1
+    Omg_eso_pos2: 1
 
 msg_timeout:
     odom: 0.5

@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <Eigen/Dense>
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/Imu.h>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/ExtendedState.h>
 #include <quadrotor_msgs/PositionCommand.h>
@@ -25,6 +26,19 @@ namespace ctrl_node{
 
         Odom_Data_t();
         void feed(nav_msgs::OdometryConstPtr pMsg);
+    };
+
+    class Imu_Data_t{
+        public:
+        Eigen::Quaterniond q;
+        Eigen::Vector3d w;
+        Eigen::Vector3d a;
+
+        sensor_msgs::Imu msg;
+        ros::Time rcv_stamp;
+
+        Imu_Data_t();
+        void feed(sensor_msgs::ImuConstPtr pMsg);
     };
 
     class State_Data_t{

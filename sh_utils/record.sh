@@ -2,6 +2,7 @@ rosbag record --tcpnodelay \
 /px4ctrl/takeoff_land \
 /debugPx4ctrl \
 /mavros/state \
+/mavros/setpoint_raw/attitude \
 /mavros/setpoint_raw/local \
 /mavros/local_position/odom \
 /mavros/local_position/velocity_local \

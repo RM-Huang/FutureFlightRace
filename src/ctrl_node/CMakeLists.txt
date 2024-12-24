@@ -32,7 +32,8 @@ include_directories(
 # )
 
 add_library(${PROJECT_NAME}
-  src/fsm_nodelet.cpp
+  src/ctrl_nodelet.cpp
+  src/ctrl_fsm.cc
   src/controller.cpp
   src/param.cpp
   src/input.cpp
